@@ -79,6 +79,7 @@ public void OnPluginStart()
 	headmenu.AddItem("radio stations", "Radio Stations");
 	headmenu.AddItem("adjust volume", "Adjust Volume");
 	headmenu.AddItem("radio help", "Help");
+	headmenu.AddItem("stop radio", "Stop Radio");
 	headmenu.ExitButton = true;
 	
 	// Volume Menu
@@ -134,6 +135,10 @@ public int HeadMenuHandler(Menu menu, MenuAction action, int client, int param2)
 			case 2:
 			{
 				helpmenu.Display(client, MENU_TIME_FOREVER);
+			}
+			case 3:
+			{
+				StreamPanel("KZ-Climb", "Thanks for listening", client);
 			}
 		}
 	}
