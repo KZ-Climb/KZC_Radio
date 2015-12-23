@@ -11,6 +11,9 @@
 //#include <sdkhooks>
 
 EngineVersion g_Game;
+Menu headmenu;
+Menu volumemenu;
+Menu helpmenu;
 
 enum RadioOptions
 {
@@ -18,6 +21,7 @@ enum RadioOptions
 	Radio_Off,
 	Radio_Help,
 }
+
 
 public Plugin myinfo = 
 {
@@ -37,60 +41,44 @@ public void OnPluginStart()
 	}
 	
 	RegConsoleCmd("sm_radio", Menu_Head);
-	RegConsoleCmd("sm_radiohelp", Menu_RadioHelp);
-	RegConsoleCmd("sm_volume", Menu_Volume);
+	
+	// Head Menu
+	headmenu = new Menu(HeadMenuHandler);
+	headmenu.SetTitle("KZ-Climb Radio Options");
+	headmenu.AddItem("radio stations", "Radio Stations");
+	headmenu.AddItem("adjust volume", "Adjust Volume");
+	headmenu.AddItem("radio help", "Help");
+	headmenu.ExitButton = true;
+	
+	// Volume Menu
+	volumemenu = new Menu(VolumeMenuHandler);
+	volumemenu.SetTitle("Volume Options");
+	volumemenu.AddItem("1", "1");
+	volumemenu.AddItem("5", "5");
+	volumemenu.AddItem("10", "10");
+	volumemenu.AddItem("20", "20");
+	volumemenu.AddItem("30", "30");
+	volumemenu.AddItem("40", "40");
+	volumemenu.AddItem("50", "50");
+	volumemenu.AddItem("75", "75");
+	volumemenu.AddItem("100", "100");
+	volumemenu.ExitButton = true;
+	
+	// Help Menu
+	helpmenu = new Menu(HelpMenuHandler);
+	helpmenu.SetTitle("Help");
+	helpmenu.AddItem("0", "NOTE: You must have HTML MOTD enabled! (cl_disablehtmlmotd 0)", ITEMDRAW_DISABLED);
+	helpmenu.AddItem("1", "Type !radio to open up the main menu");
+	helpmenu.AddItem("2", "Type !radiohelp to open up this menu");
+	helpmenu.AddItem("3", "Type !volume 20 to change the volume. E.G '!volume 25'");
+	helpmenu.ExitButton = true;
 }
 
 public Action Menu_Head(int client, int args)
 {
 	if(client > 0 && client <= MaxClients && IsClientInGame(client))
 	{
-		Menu menu = new Menu(HeadMenuHandler);
-		menu.SetTitle("KZ-Climb Radio Options");
-		menu.AddItem("radio stations", "Radio Stations");
-		menu.AddItem("adjust volume", "Adjust Volume");
-		menu.AddItem("radio help", "Help");
-		menu.ExitButton = true;
-		menu.Display(client, 30);
-	}
-	
-	return Plugin_Handled;
-}
-
-public Action Menu_Volume(client, args)
-{
-	if(client > 0 && client <= MaxClients && IsClientInGame(client))
-	{
-		Menu menu = new Menu(VolumeMenuHandler);
-		menu.SetTitle("Volume Options");
-		menu.AddItem("1", "1");
-		menu.AddItem("5", "5");
-		menu.AddItem("10", "10");
-		menu.AddItem("20", "20");
-		menu.AddItem("30", "30");
-		menu.AddItem("40", "40");
-		menu.AddItem("50", "50");
-		menu.AddItem("75", "75");
-		menu.AddItem("100", "100");
-		menu.ExitButton = true;
-		menu.Display(client, 30);
-	}
-	
-	return Plugin_Handled;
-}
-
-public Action Menu_RadioHelp(client, args)
-{
-	if(client > 0 && client <= MaxClients && IsClientInGame(client))
-	{
-		Menu menu = new Menu(HelpMenuHandler);
-		menu.SetTitle("Help");
-		menu.AddItem("0", "NOTE: You must have HTML MOTD enabled! (cl_disablehtmlmotd 0)", ITEMDRAW_DISABLED);
-		menu.AddItem("1", "Type !radio to open up the main menu");
-		menu.AddItem("2", "Type !radiohelp to open up this menu");
-		menu.AddItem("3", "Type !volume 20 to change the volume. E.G '!volume 25'");
-		menu.ExitButton = true;
-		menu.Display(client, 30);
+		headmenu.Display(client, 30);
 	}
 	
 	return Plugin_Handled;
@@ -108,11 +96,11 @@ public int HeadMenuHandler(Menu menu, MenuAction action, int client, int param2)
 			}
 			case 1:
 			{
-				
+				volumemenu.Display(client, MENU_TIME_FOREVER);
 			}
 			case 2:
 			{
-				
+				helpmenu.Display(client, MENU_TIME_FOREVER);
 			}
 		}
 	}
