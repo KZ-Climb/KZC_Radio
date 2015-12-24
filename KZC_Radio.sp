@@ -15,10 +15,6 @@
 #define MAX_STATION_URL_SIZE	192
 
 EngineVersion g_Game;
-Menu headmenu;
-Menu volumemenu;
-Menu helpmenu;
-Menu stationsmenu;
 
 enum RadioOptions
 {
@@ -27,11 +23,8 @@ enum RadioOptions
 	Radio_Help, 
 }
 
-Handle radioName;
-Handle radioUrl;
-char currentUrl[512];
-char currentName[512];
-char currentVolume[4];
+Menu headmenu, volumemenu, helpmenu, stationsmenu;
+Handle radioName, radioUrl, radioClientVolume, radioClientUrl;
 
 public Plugin myinfo = 
 {
@@ -51,15 +44,23 @@ public void OnPluginStart()
 	}
 	
 	RegConsoleCmd("sm_radio", Menu_Head);
+	RegConsoleCmd("sm_volume", Change_Volume);
 	
 	radioName = CreateArray(512);
 	radioUrl = CreateArray(512);
-	currentVolume = "20";
+	radioClientVolume = CreateArray(64);
+	radioClientUrl = CreateArray(64);
 	
 	LoadWebshortcuts();
 	
 	stationsmenu = new Menu(StationsMenuHandler);
 	stationsmenu.SetTitle("KZ-Climb Radio Options");
+	
+	for (int i; i < 64; i++)
+	{
+		PushArrayString(radioClientVolume, "20");
+		PushArrayString(radioClientUrl, "");
+	}
 	
 	for (int i; i < GetArraySize(radioName); ++i)
 	{
@@ -100,11 +101,39 @@ public void OnPluginStart()
 	helpmenu = new Menu(HelpMenuHandler);
 	helpmenu.SetTitle("Help");
 	helpmenu.AddItem("0", "NOTE: You must have HTML MOTD enabled! (cl_disablehtmlmotd 0)", ITEMDRAW_DISABLED);
-	helpmenu.AddItem("1", "Type !radio to open up the main menu");
-	helpmenu.AddItem("2", "Type !radiohelp to open up this menu");
-	helpmenu.AddItem("3", "Type !volume 20 to change the volume. E.G '!volume 25'");
+	helpmenu.AddItem("1", "NOTE: You must have flashplayer NPAPI and PPAPI! (press to get link in console)", ITEMDRAW_DISABLED);
+	helpmenu.AddItem("2", "Type !radio to open up the main menu");
+	helpmenu.AddItem("3", "Type !radiohelp to open up this menu");
+	helpmenu.AddItem("4", "Type !volume 20 to change the volume. E.G '!volume 25'");
 	helpmenu.ExitButton = true;
 	
+}
+
+public Action Change_Volume(int client, int args)
+{
+	char arg1[512], url[512], listeningUrl[512];
+	int vol;
+	
+	GetCmdArg(1, arg1, sizeof(arg1));
+	
+	vol = StringToInt(arg1);
+	
+	if(StrEqual(arg1, "0"))
+		vol = 0;
+	else if(vol > 100)
+		vol = 100;
+	else if(vol < 0)
+		vol = 0;
+	
+	IntToString(vol, arg1, sizeof(arg1));
+	
+	SetArrayString(radioClientVolume, client, arg1);
+	
+	GetArrayString(radioClientUrl, client, listeningUrl, sizeof(listeningUrl));
+	
+	Format(url, sizeof(url), "http://radio.junkfoodmountain.com/?radiourl=%s&volume=%s", listeningUrl, arg1);
+	
+	StreamPanel("KZ-Climb", url, client);
 }
 
 public Action Menu_Head(int client, int args)
@@ -148,10 +177,14 @@ public int VolumeMenuHandler(Menu menu, MenuAction action, int client, int param
 {
 	if (action == MenuAction_Select)
 	{
-		volumemenu.GetItem(param2, currentVolume, sizeof(currentVolume));
+		char vol[4], url[512], listeningUrl[512];
+		volumemenu.GetItem(param2, vol, sizeof(vol));
 		
-		char url[512];
-		Format(url, sizeof(url), "http://radio.junkfoodmountain.com/?radiourl=%s&volume=%s", currentUrl, currentVolume);
+		SetArrayString(radioClientVolume, client, vol);
+		
+		GetArrayString(radioClientUrl, client, listeningUrl, sizeof(listeningUrl));
+		
+		Format(url, sizeof(url), "http://radio.junkfoodmountain.com/?radiourl=%s&volume=%s", listeningUrl, vol);
 		
 		StreamPanel("KZ-Climb", url, client);
 	}
@@ -165,6 +198,10 @@ public int HelpMenuHandler(Menu menu, MenuAction action, int client, int param2)
 {
 	if (action == MenuAction_Select)
 	{
+		if(param2 == 1)
+		{
+			PrintToConsole(client, "https://get.adobe.com/flashplayer/otherversions/");
+		}
 		helpmenu.Display(client, MENU_TIME_FOREVER);
 	}
 	else if (action == MenuAction_Cancel)
@@ -177,17 +214,19 @@ public int StationsMenuHandler(Menu menu, MenuAction action, int client, int par
 {
 	if (action == MenuAction_Select)
 	{
-		stationsmenu.GetItem(param2, currentUrl, sizeof(currentUrl));
+		char url[512], clientName[512], vol[4], listeningName[512], listeningUrl[512];
 		
-		char url[512];
-		char clientName[512];
+		stationsmenu.GetItem(param2, listeningUrl, sizeof(listeningUrl));
 		
-		GetArrayString(radioName, param2, currentName, sizeof(currentName));
+		GetArrayString(radioName, param2, listeningName, sizeof(listeningName));
+		GetArrayString(radioClientVolume, client, vol, sizeof(vol));
 		
-		Format(url, sizeof(url), "http://radio.junkfoodmountain.com/?radiourl=%s&volume=%s", currentUrl, currentVolume);
+		SetArrayString(radioClientUrl, client, listeningUrl);
+		
+		Format(url, sizeof(url), "http://radio.junkfoodmountain.com/?radiourl=%s&volume=%s", listeningUrl, vol);
 		
 		GetClientName(client, clientName, sizeof(clientName));
-		PrintToChatAll("[KZC-Radio] %s Started listening to %s", clientName, currentName);
+		PrintToChatAll("[KZC-Radio] %s Started listening to %s", clientName, listeningName);
 		
 		StreamPanel("KZ-Climb", url, client);
 	}
