@@ -283,8 +283,8 @@ public void LoadWebshortcuts()
 	CloseHandle(f);
 }
 
-public StreamPanel(String:title[], String:url[], client) {
-	new Handle:Radio = CreateKeyValues("data");
+public StreamPanel(char title[512], char url[512], client) {
+	Handle Radio = CreateKeyValues("data");
 	KvSetString(Radio, "title", title);
 	KvSetString(Radio, "type", "2");
 	KvSetString(Radio, "msg", url);
