@@ -28,9 +28,9 @@ Handle radioName, radioUrl, radioClientVolume, radioClientUrl;
 
 public Plugin myinfo = 
 {
-	name = "radio", 
+	name = "KZ-Climb Radio", 
 	author = PLUGIN_AUTHOR, 
-	description = "radio plugin for KZ-Climb", 
+	description = "Radio plugin for KZ-Climb", 
 	version = PLUGIN_VERSION, 
 	url = "http://kz-climb.com"
 };
