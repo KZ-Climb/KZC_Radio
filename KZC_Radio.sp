@@ -1,10 +1,5 @@
 #pragma semicolon 1
 
-#define DEBUG
-
-#define PLUGIN_AUTHOR "AzaZPPL"
-#define PLUGIN_VERSION "1.0"
-
 #include <sourcemod>
 #include <sdktools>
 #include <cstrike>
@@ -24,14 +19,14 @@ enum RadioOptions
 }
 
 Menu headmenu, volumemenu, helpmenu, stationsmenu;
-Handle radioName, radioUrl, radioClientVolume, radioClientUrl;
+Handle radioName, radioUrl, radioClientVolume, radioClientUrl, radioClientMessage;
 
 public Plugin myinfo = 
 {
-	name = "KZ-Climb Radio", 
-	author = PLUGIN_AUTHOR, 
-	description = "Radio plugin for KZ-Climb", 
-	version = PLUGIN_VERSION, 
+	name = "KZC_Radio", 
+	author = "AzaZPPL", 
+	description = "Radio plugin for KZ-Climb",
+	version = "1.1", 
 	url = "http://kz-climb.com"
 };
 
@@ -45,14 +40,41 @@ public void OnPluginStart()
 	
 	RegConsoleCmd("sm_radio", Menu_Head);
 	RegConsoleCmd("sm_volume", Change_Volume);
+	RegConsoleCmd("sm_stopradio", StopRadio);
+	HookEvent("player_spawn", Event_PlayerSpawn, EventHookMode_Post);
 	
 	radioName = CreateArray(512);
 	radioUrl = CreateArray(512);
 	radioClientVolume = CreateArray(64);
 	radioClientUrl = CreateArray(64);
+	radioClientMessage = CreateArray(64);
 	
 	LoadWebshortcuts();
+	SetupMenu();
 	
+}
+
+public void Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast)
+{
+	int client = GetClientOfUserId(GetEventInt(event, "userid"));
+	char message[64];
+	
+	GetArrayString(radioClientMessage, client, message, sizeof(message));
+	
+	if(message[client] == "true")
+		CreateTimer(5.00, Welcome_Message, client, TIMER_FLAG_NO_MAPCHANGE);
+}
+
+public Action Welcome_Message(Handle h_timer, int client)
+{
+	PrintToChat(client, "%s", " \x03[\x02KZC-Radio\x03]\x01 Welcome! This server is using KZC-Radio!");
+	PrintToChat(client, "%s", " \x03[\x02KZC-Radio\x03]\x01 Type in !radio for the radio menu!");
+	
+	SetArrayString(radioClientMessage, client, "true");
+}
+
+public void SetupMenu()
+{
 	stationsmenu = new Menu(StationsMenuHandler);
 	stationsmenu.SetTitle("KZ-Climb Radio Options");
 	
@@ -105,8 +127,8 @@ public void OnPluginStart()
 	helpmenu.AddItem("2", "Type !radio to open up the main menu");
 	helpmenu.AddItem("3", "Type !radiohelp to open up this menu");
 	helpmenu.AddItem("4", "Type !volume 20 to change the volume. E.G '!volume 25'");
+	helpmenu.AddItem("5", "Type !stopradio to stop the radio");
 	helpmenu.ExitButton = true;
-	
 }
 
 public Action Change_Volume(int client, int args)
@@ -167,7 +189,7 @@ public int HeadMenuHandler(Menu menu, MenuAction action, int client, int param2)
 			}
 			case 3:
 			{
-				StreamPanel("KZ-Climb", "Thanks for listening", client);
+				StopRadio(client, 0);
 			}
 		}
 	}
@@ -283,11 +305,20 @@ public void LoadWebshortcuts()
 	CloseHandle(f);
 }
 
-public StreamPanel(char title[512], char url[512], client) {
+public void StreamPanel(char title[512], char url[512], int client) 
+{
 	Handle Radio = CreateKeyValues("data");
 	KvSetString(Radio, "title", title);
 	KvSetString(Radio, "type", "2");
 	KvSetString(Radio, "msg", url);
 	ShowVGUIPanel(client, "info", Radio, false);
 	CloseHandle(Radio);
+}
+
+public Action StopRadio(int client, int args)
+{
+	if (client > 0 && client <= MaxClients && IsClientInGame(client))
+	{
+		StreamPanel("KZ-Climb", "Thanks for listening", client);
+	}
 }
