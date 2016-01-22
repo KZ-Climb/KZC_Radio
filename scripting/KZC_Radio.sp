@@ -1,16 +1,11 @@
 #pragma semicolon 1
 
 #include <sourcemod>
-#include <sdktools>
-#include <cstrike>
-//#include <sdkhooks>
 
 #define STATIONSFILE			"cfg/sourcemod/KZC_Radio.cfg"
 #define MAX_STATION_NAME_SIZE	32
 #define MAX_STATION_URL_SIZE	192
 #define MAX_RADIO				512
-
-EngineVersion g_Game;
 
 enum RadioOptions
 {
@@ -33,12 +28,6 @@ public Plugin myinfo =
 
 public void OnPluginStart()
 {
-	g_Game = GetEngineVersion();
-	if (g_Game != Engine_CSGO && g_Game != Engine_CSS)
-	{
-		SetFailState("This plugin is for CSGO/CSS only.");
-	}
-	
 	RegConsoleCmd("sm_radio", Menu_Head);
 	RegConsoleCmd("sm_volume", Change_Volume);
 	RegConsoleCmd("sm_stopradio", StopRadio);
