@@ -8,6 +8,7 @@
 #define STATIONSFILE			"cfg/sourcemod/KZC_Radio.cfg"
 #define MAX_STATION_NAME_SIZE	32
 #define MAX_STATION_URL_SIZE	192
+#define MAX_RADIO				512
 
 EngineVersion g_Game;
 
@@ -19,7 +20,7 @@ enum RadioOptions
 }
 
 Menu headmenu, volumemenu, helpmenu, stationsmenu;
-Handle radioName, radioUrl, radioClientVolume, radioClientUrl, radioClientMessage;
+Handle radioName, radioUrl, radioClientVolume, radioClientUrl, radioClientWelcomeMessage[MAXPLAYERS+1];
 
 public Plugin myinfo = 
 {
@@ -41,28 +42,29 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_radio", Menu_Head);
 	RegConsoleCmd("sm_volume", Change_Volume);
 	RegConsoleCmd("sm_stopradio", StopRadio);
-	HookEvent("player_spawn", Event_PlayerSpawn, EventHookMode_Post);
 	
-	radioName = CreateArray(512);
-	radioUrl = CreateArray(512);
-	radioClientVolume = CreateArray(64);
-	radioClientUrl = CreateArray(64);
-	radioClientMessage = CreateArray(64);
+	radioName = CreateArray(MAX_RADIO);
+	radioUrl = CreateArray(MAX_RADIO);
+	radioClientVolume = CreateArray(MAXPLAYERS+1);
+	radioClientUrl = CreateArray(MAXPLAYERS+1);
 	
 	LoadWebshortcuts();
 	SetupMenu();
 	
 }
 
-public void Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast)
+public void OnClientPutInServer(int client)
 {
-	int client = GetClientOfUserId(GetEventInt(event, "userid"));
-	char message[64];
-	
-	GetArrayString(radioClientMessage, client, message, sizeof(message));
-	
-	if(message[client] == "true")
-		CreateTimer(5.00, Welcome_Message, client, TIMER_FLAG_NO_MAPCHANGE);
+	radioClientWelcomeMessage[client] = CreateTimer(20.00, Welcome_Message, client);
+}
+
+public void OnClientDisconnect(int client)
+{
+	if (radioClientWelcomeMessage[client] != null)
+	{
+		KillTimer(radioClientWelcomeMessage[client]);
+		radioClientWelcomeMessage[client] = null;
+	}
 }
 
 public Action Welcome_Message(Handle h_timer, int client)
@@ -70,7 +72,7 @@ public Action Welcome_Message(Handle h_timer, int client)
 	PrintToChat(client, "%s", " \x03[\x02KZC-Radio\x03]\x01 Welcome! This server is using KZC-Radio!");
 	PrintToChat(client, "%s", " \x03[\x02KZC-Radio\x03]\x01 Type in !radio for the radio menu!");
 	
-	SetArrayString(radioClientMessage, client, "true");
+	radioClientWelcomeMessage[client] = null;
 }
 
 public void SetupMenu()
@@ -78,7 +80,7 @@ public void SetupMenu()
 	stationsmenu = new Menu(StationsMenuHandler);
 	stationsmenu.SetTitle("KZ-Climb Radio Options");
 	
-	for (int i; i < 64; i++)
+	for (int i; i < MAXPLAYERS+1; i++)
 	{
 		PushArrayString(radioClientVolume, "20");
 		PushArrayString(radioClientUrl, "");
@@ -86,8 +88,8 @@ public void SetupMenu()
 	
 	for (int i; i < GetArraySize(radioName); ++i)
 	{
-		char name[512];
-		char link[512];
+		char name[MAX_RADIO];
+		char link[MAX_RADIO];
 		
 		GetArrayString(radioName, i, name, sizeof(name));
 		GetArrayString(radioUrl, i, link, sizeof(link));
@@ -133,7 +135,7 @@ public void SetupMenu()
 
 public Action Change_Volume(int client, int args)
 {
-	char arg1[512], url[512], listeningUrl[512];
+	char arg1[MAX_RADIO], url[MAX_RADIO], listeningUrl[MAX_RADIO];
 	int vol;
 	
 	GetCmdArg(1, arg1, sizeof(arg1));
@@ -199,7 +201,7 @@ public int VolumeMenuHandler(Menu menu, MenuAction action, int client, int param
 {
 	if (action == MenuAction_Select)
 	{
-		char vol[4], url[512], listeningUrl[512];
+		char vol[4], url[MAX_RADIO], listeningUrl[MAX_RADIO];
 		volumemenu.GetItem(param2, vol, sizeof(vol));
 		
 		SetArrayString(radioClientVolume, client, vol);
@@ -236,7 +238,7 @@ public int StationsMenuHandler(Menu menu, MenuAction action, int client, int par
 {
 	if (action == MenuAction_Select)
 	{
-		char url[512], clientName[512], vol[4], listeningName[512], listeningUrl[512];
+		char url[MAX_RADIO], clientName[MAX_RADIO], vol[4], listeningName[MAX_RADIO], listeningUrl[MAX_RADIO];
 		
 		stationsmenu.GetItem(param2, listeningUrl, sizeof(listeningUrl));
 		
@@ -275,8 +277,8 @@ public void LoadWebshortcuts()
 		return;
 	}
 	
-	char name[32];
-	char link[512];
+	char name[MAX_STATION_NAME_SIZE];
+	char link[MAX_RADIO];
 	
 	ClearArray(radioName);
 	ClearArray(radioUrl);
@@ -305,7 +307,7 @@ public void LoadWebshortcuts()
 	CloseHandle(f);
 }
 
-public void StreamPanel(char title[512], char url[512], int client) 
+public void StreamPanel(char title[MAX_RADIO], char url[MAX_RADIO], int client) 
 {
 	Handle Radio = CreateKeyValues("data");
 	KvSetString(Radio, "title", title);
