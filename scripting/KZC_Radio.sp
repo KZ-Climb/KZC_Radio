@@ -2,6 +2,15 @@
 
 #include <sourcemod>
 
+public Plugin myinfo = 
+{
+	name = "KZC_Radio", 
+	author = "AzaZPPL", 
+	description = "Radio plugin for KZ-Climb",
+	version = "1.2", 
+	url = "http://kz-climb.com"
+};
+
 #define STATIONSFILE			"cfg/sourcemod/KZC_Radio.cfg"
 #define MAX_STATION_NAME_SIZE	32
 #define MAX_STATION_URL_SIZE	192
@@ -17,14 +26,6 @@ enum RadioOptions
 Menu headmenu, volumemenu, helpmenu, stationsmenu;
 Handle radioName, radioUrl, radioClientVolume, radioClientUrl, radioClientWelcomeMessage[MAXPLAYERS+1];
 
-public Plugin myinfo = 
-{
-	name = "KZC_Radio", 
-	author = "AzaZPPL", 
-	description = "Radio plugin for KZ-Climb",
-	version = "1.1", 
-	url = "http://kz-climb.com"
-};
 
 public void OnPluginStart()
 {
