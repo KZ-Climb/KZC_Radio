@@ -7,25 +7,27 @@ public Plugin myinfo =
 	name = "KZC_Radio", 
 	author = "AzaZPPL", 
 	description = "Radio plugin for KZ-Climb",
-	version = "1.2", 
+	version = "1.3", 
 	url = "http://kz-climb.com"
 };
 
-#define STATIONSFILE			"cfg/sourcemod/KZC_Radio.cfg"
-#define MAX_STATION_NAME_SIZE	32
-#define MAX_STATION_URL_SIZE	192
-#define MAX_RADIO				512
+#define MAX_USERNAME_SIZE	32
+#define MAX_NAME_SIZE	32
+#define MAX_URL_SIZE	512
 
-enum RadioOptions
+enum ClientOptions
 {
-	Radio_Volume, 
-	Radio_Off, 
-	Radio_Help, 
+	String:Name[MAX_USERNAME_SIZE],
+	String:Radio_Name[MAX_NAME_SIZE],
+	String:Radio_Url[MAX_URL_SIZE],
+	bool:Radio_On,
+	Radio_Vol,
 }
 
 Menu headmenu, volumemenu, helpmenu, stationsmenu;
-Handle radioName, radioUrl, radioClientVolume, radioClientUrl, radioClientWelcomeMessage[MAXPLAYERS+1];
+Handle radioName, radioUrl, radioClientWelcomeMessage[MAXPLAYERS+1];
 
+h_client[MAXPLAYERS + 1][ClientOptions];
 
 public void OnPluginStart()
 {
@@ -33,10 +35,8 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_volume", Change_Volume);
 	RegConsoleCmd("sm_stopradio", StopRadio);
 	
-	radioName = CreateArray(MAX_RADIO);
-	radioUrl = CreateArray(MAX_RADIO);
-	radioClientVolume = CreateArray(MAXPLAYERS+1);
-	radioClientUrl = CreateArray(MAXPLAYERS+1);
+	radioName = CreateArray(MAX_NAME_SIZE);
+	radioUrl = CreateArray(MAX_URL_SIZE);
 	
 	LoadWebshortcuts();
 	SetupMenu();
@@ -46,6 +46,12 @@ public void OnPluginStart()
 public void OnClientPutInServer(int client)
 {
 	radioClientWelcomeMessage[client] = CreateTimer(20.00, Welcome_Message, client);
+	
+	// Set default values for connected client
+	FormatEx(h_client[client][Radio_Name], MAX_NAME_SIZE, "");
+	FormatEx(h_client[client][Radio_Url], MAX_URL_SIZE, "");
+	h_client[client][Radio_On] = false;
+	h_client[client][Radio_Vol] = 20;
 }
 
 public void OnClientDisconnect(int client)
@@ -70,16 +76,9 @@ public void SetupMenu()
 	stationsmenu = new Menu(StationsMenuHandler);
 	stationsmenu.SetTitle("KZ-Climb Radio Options");
 	
-	for (int i; i < MAXPLAYERS+1; i++)
-	{
-		PushArrayString(radioClientVolume, "20");
-		PushArrayString(radioClientUrl, "");
-	}
-	
 	for (int i; i < GetArraySize(radioName); ++i)
 	{
-		char name[MAX_RADIO];
-		char link[MAX_RADIO];
+		char name[MAX_NAME_SIZE], link[MAX_URL_SIZE];
 		
 		GetArrayString(radioName, i, name, sizeof(name));
 		GetArrayString(radioUrl, i, link, sizeof(link));
@@ -114,8 +113,8 @@ public void SetupMenu()
 	// Help Menu
 	helpmenu = new Menu(HelpMenuHandler);
 	helpmenu.SetTitle("Help");
-	helpmenu.AddItem("0", "NOTE: You must have HTML MOTD enabled! (cl_disablehtmlmotd 0)", ITEMDRAW_DISABLED);
-	helpmenu.AddItem("1", "NOTE: You must have flashplayer NPAPI and PPAPI! (press to get link in console)", ITEMDRAW_DISABLED);
+	helpmenu.AddItem("0", "NOTE: You must have HTML MOTD enabled! (cl_disablehtmlmotd 0)");
+	helpmenu.AddItem("1", "NOTE: You must have flashplayer NPAPI and PPAPI! (press to get link in console)");
 	helpmenu.AddItem("2", "Type !radio to open up the main menu");
 	helpmenu.AddItem("3", "Type !radiohelp to open up this menu");
 	helpmenu.AddItem("4", "Type !volume 20 to change the volume. E.G '!volume 25'");
@@ -125,27 +124,22 @@ public void SetupMenu()
 
 public Action Change_Volume(int client, int args)
 {
-	char arg1[MAX_RADIO], url[MAX_RADIO], listeningUrl[MAX_RADIO];
+	char userInput[MAX_URL_SIZE], url[MAX_URL_SIZE];
 	int vol;
 	
-	GetCmdArg(1, arg1, sizeof(arg1));
+	GetCmdArg(1, userInput, sizeof(userInput));
 	
-	vol = StringToInt(arg1);
+	vol = StringToInt(userInput);
 	
-	if(StrEqual(arg1, "0"))
-		vol = 0;
-	else if(vol > 100)
+	if(vol > 100)
 		vol = 100;
 	else if(vol < 0)
 		vol = 0;
 	
-	IntToString(vol, arg1, sizeof(arg1));
+	h_client[client][Radio_On] = true;
+	h_client[client][Radio_Vol] = vol;
 	
-	SetArrayString(radioClientVolume, client, arg1);
-	
-	GetArrayString(radioClientUrl, client, listeningUrl, sizeof(listeningUrl));
-	
-	Format(url, sizeof(url), "http://radio.junkfoodmountain.com/?radiourl=%s&volume=%s", listeningUrl, arg1);
+	FormatEx(url, sizeof(url), "http://radio.junkfoodmountain.com/?radiourl=%s&volume=%i", h_client[client][Radio_Url], vol);
 	
 	StreamPanel("KZ-Climb", url, client);
 }
@@ -191,14 +185,13 @@ public int VolumeMenuHandler(Menu menu, MenuAction action, int client, int param
 {
 	if (action == MenuAction_Select)
 	{
-		char vol[4], url[MAX_RADIO], listeningUrl[MAX_RADIO];
-		volumemenu.GetItem(param2, vol, sizeof(vol));
+		char userInput[4], url[MAX_URL_SIZE];
+		volumemenu.GetItem(param2, userInput, sizeof(userInput));
 		
-		SetArrayString(radioClientVolume, client, vol);
+		h_client[client][Radio_On] = true;
+		h_client[client][Radio_Vol] = StringToInt(userInput);
 		
-		GetArrayString(radioClientUrl, client, listeningUrl, sizeof(listeningUrl));
-		
-		Format(url, sizeof(url), "http://radio.junkfoodmountain.com/?radiourl=%s&volume=%s", listeningUrl, vol);
+		FormatEx(url, sizeof(url), "http://radio.junkfoodmountain.com/?radiourl=%s&volume=%i", h_client[client][Radio_Url], h_client[client][Radio_Vol]);
 		
 		StreamPanel("KZ-Climb", url, client);
 	}
@@ -228,19 +221,17 @@ public int StationsMenuHandler(Menu menu, MenuAction action, int client, int par
 {
 	if (action == MenuAction_Select)
 	{
-		char url[MAX_RADIO], clientName[MAX_RADIO], vol[4], listeningName[MAX_RADIO], listeningUrl[MAX_RADIO];
+		char url[MAX_URL_SIZE];
 		
-		stationsmenu.GetItem(param2, listeningUrl, sizeof(listeningUrl));
+		stationsmenu.GetItem(param2, h_client[client][Radio_Url], MAX_URL_SIZE);
+		stationsmenu.GetItem(param2, "", 0, _, h_client[client][Radio_Name], MAX_NAME_SIZE);
 		
-		GetArrayString(radioName, param2, listeningName, sizeof(listeningName));
-		GetArrayString(radioClientVolume, client, vol, sizeof(vol));
+		h_client[client][Radio_On] = true;
 		
-		SetArrayString(radioClientUrl, client, listeningUrl);
+		FormatEx(url, sizeof(url), "http://radio.junkfoodmountain.com/?radiourl=%s&volume=%i", h_client[client][Radio_Url], h_client[client][Radio_Vol]);
 		
-		Format(url, sizeof(url), "http://radio.junkfoodmountain.com/?radiourl=%s&volume=%s", listeningUrl, vol);
-		
-		GetClientName(client, clientName, sizeof(clientName));
-		PrintToChatAll("[KZC-Radio] %s Started listening to %s", clientName, listeningName);
+		GetClientName(client, h_client[client][Name], MAX_USERNAME_SIZE);
+		PrintToChatAll(" \x03[\x02KZC-Radio\x03]\x01 %s Started listening to %s", h_client[client][Name], h_client[client][Radio_Name]);
 		
 		StreamPanel("KZ-Climb", url, client);
 	}
@@ -263,12 +254,11 @@ public void LoadWebshortcuts()
 	Handle f = OpenFile(buffer, "r");
 	if (f == INVALID_HANDLE)
 	{
-		LogError("[Radio] Could not open file: %s", buffer);
+		LogError("[KZC-Radio] Could not open file: %s", buffer);
 		return;
 	}
 	
-	char name[MAX_STATION_NAME_SIZE];
-	char link[MAX_RADIO];
+	char name[MAX_NAME_SIZE], link[MAX_URL_SIZE];
 	
 	ClearArray(radioName);
 	ClearArray(radioUrl);
@@ -297,7 +287,7 @@ public void LoadWebshortcuts()
 	CloseHandle(f);
 }
 
-public void StreamPanel(char title[MAX_RADIO], char url[MAX_RADIO], int client) 
+public void StreamPanel(char title[128], char url[MAX_URL_SIZE], int client) 
 {
 	Handle Radio = CreateKeyValues("data");
 	KvSetString(Radio, "title", title);
